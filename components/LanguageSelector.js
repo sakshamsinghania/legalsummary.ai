@@ -17,9 +17,9 @@ const SUPPORTED_LANGUAGES = [
   { code: 'or', name: 'Odia', flag: '🇮🇳', native: 'ଓଡ଼ିଆ' },
 ];
 
-export default function LanguageSelector({ 
-  selectedLanguage, 
-  onLanguageChange, 
+export default function LanguageSelector({
+  selectedLanguage,
+  onLanguageChange,
   showDetectedLanguage = null,
   availableLanguages = [],
   isTranslating = false
@@ -39,12 +39,13 @@ export default function LanguageSelector({
   const isDetected = (langCode) => langCode === showDetectedLanguage;
 
   // Filter languages based on search
-  const filteredLanguages = SUPPORTED_LANGUAGES.filter(lang => 
+  const filteredLanguages = SUPPORTED_LANGUAGES.filter(lang =>
     lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     lang.native.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getDisplayName = (lang) => {
+    if (!lang) return 'Select Language';
     if (lang.code === 'en') {
       return lang.name;
     }
@@ -67,9 +68,8 @@ export default function LanguageSelector({
             {availableLanguages.length}
           </span>
         )}
-        <ChevronDown className={`h-4 w-4 text-gray-300 transition-transform ${
-          isOpen ? 'rotate-180' : ''
-        }`} />
+        <ChevronDown className={`h-4 w-4 text-gray-300 transition-transform ${isOpen ? 'rotate-180' : ''
+          }`} />
       </button>
 
       {isOpen && (
@@ -117,7 +117,7 @@ export default function LanguageSelector({
                 <div className="border-t border-gray-600 my-2"></div>
               </>
             )}
-            
+
             {/* Cached Translations Section */}
             {availableLanguages.length > 1 && !searchQuery && (
               <>
@@ -133,11 +133,10 @@ export default function LanguageSelector({
                     <button
                       key={`cached-${language.code}`}
                       onClick={() => handleLanguageSelect(language.code)}
-                      className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-600 transition-colors ${
-                        language.code === selectedLanguage 
-                          ? 'bg-green-900/30 text-green-200' 
+                      className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-600 transition-colors ${language.code === selectedLanguage
+                          ? 'bg-green-900/30 text-green-200'
                           : 'text-gray-200'
-                      }`}
+                        }`}
                     >
                       <span className="flex items-center justify-between">
                         <span className="flex items-center space-x-2">
@@ -165,11 +164,10 @@ export default function LanguageSelector({
                 <button
                   key={language.code}
                   onClick={() => handleLanguageSelect(language.code)}
-                  className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-600 transition-colors ${
-                    language.code === selectedLanguage 
-                      ? 'bg-blue-900/50 text-blue-200' 
+                  className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-600 transition-colors ${language.code === selectedLanguage
+                      ? 'bg-blue-900/50 text-blue-200'
                       : 'text-gray-200'
-                  }`}
+                    }`}
                 >
                   <span className="flex items-center justify-between">
                     <span className="flex items-center space-x-2">

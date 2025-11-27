@@ -5,11 +5,13 @@ import Head from 'next/head';
 import { useAuth } from '../lib/authContext';
 import { firestoreService } from '../lib/firestoreService';
 import UserProfile from '../components/UserProfile';
-import { 
-  Loader, 
-  FileText, 
-  Clock, 
-  Search, 
+import ConfirmDialog from '../components/ConfirmDialog';
+import AlertDialog from '../components/AlertDialog';
+import {
+  Loader,
+  FileText,
+  Clock,
+  Search,
   Filter,
   Globe,
   ArrowLeft,
@@ -25,8 +27,15 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterLanguage, setFilterLanguage] = useState('all');
-  const [currentDocId, setCurrentDocId] = useState(null); 
+  const [currentDocId, setCurrentDocId] = useState(null);
   const [deletingDocId, setDeletingDocId] = useState(null); // Track which doc is being deleted
+
+  // Modal states
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [showErrorAlert, setShowErrorAlert] = useState(false);
+  const [deleteDocData, setDeleteDocData] = useState(null); // Store doc data for deletion
+  const [alertMessage, setAlertMessage] = useState('');
 
   // Redirect if not logged in
   useEffect(() => {
@@ -42,7 +51,7 @@ export default function HistoryPage() {
       if (fromQuery) {
         setCurrentDocId(fromQuery);
       }
-      
+
       loadDocuments();
     }
   }, [user, router.query]);
@@ -59,45 +68,52 @@ export default function HistoryPage() {
       setLoading(false);
     }
   };
-  
-  // Delete handler with better UX
-  const handleDeleteDocument = async (firestoreDocId, fileName, documentId) => {
+
+  // Open delete confirmation modal
+  const handleDeleteDocument = (firestoreDocId, fileName, documentId) => {
     if (!user) return;
 
-    const isConfirmed = window.confirm(
-      `Are you sure you want to permanently delete "${fileName}"?\n\nThis will remove:\n• Document analysis\n• All translations\n• Chat history\n\nThis action cannot be undone.`
-    );
+    setDeleteDocData({ firestoreDocId, fileName, documentId });
+    setShowConfirmDelete(true);
+  };
 
-    if (isConfirmed) {
-      try {
-        setDeletingDocId(firestoreDocId); // Show loading state for this specific document
-        
-        // Delete the document
-        await firestoreService.deleteDocument(user.uid, firestoreDocId);
-        
-        // If the deleted document was the currently viewed one, clear localStorage
-        if (currentDocId === firestoreDocId) {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('currentDocId');
-            localStorage.removeItem('selectedLanguage');
-          }
-          setCurrentDocId(null);
+  // Perform the actual deletion
+  const confirmDelete = async () => {
+    if (!deleteDocData) return;
+
+    const { firestoreDocId, fileName, documentId } = deleteDocData;
+
+    try {
+      setDeletingDocId(firestoreDocId); // Show loading state for this specific document
+
+      // Delete the document
+      await firestoreService.deleteDocument(user.uid, firestoreDocId);
+
+      // If the deleted document was the currently viewed one, clear localStorage
+      if (currentDocId === firestoreDocId) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('currentDocId');
+          localStorage.removeItem('selectedLanguage');
         }
-
-        // Refresh the list after successful deletion
-        await loadDocuments();
-        
-        console.log(`✅ Document ${firestoreDocId} deleted successfully`);
-        
-        // Show success message
-        alert(`"${fileName}" has been deleted successfully.`);
-        
-      } catch (error) {
-        console.error('Failed to delete document:', error);
-        alert(`Failed to delete "${fileName}". Please try again.`);
-      } finally {
-        setDeletingDocId(null);
+        setCurrentDocId(null);
       }
+
+      // Refresh the list after successful deletion
+      await loadDocuments();
+
+      console.log(`✅ Document ${firestoreDocId} deleted successfully`);
+
+      // Show success message
+      setAlertMessage(`"${fileName}" has been deleted successfully.`);
+      setShowSuccessAlert(true);
+
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+      setAlertMessage(`Failed to delete "${fileName}". Please try again.`);
+      setShowErrorAlert(true);
+    } finally {
+      setDeletingDocId(null);
+      setDeleteDocData(null);
     }
   };
 
@@ -112,9 +128,9 @@ export default function HistoryPage() {
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('en-IN', { 
+    return date.toLocaleDateString('en-IN', {
       day: 'numeric',
-      month: 'short', 
+      month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
@@ -187,7 +203,7 @@ export default function HistoryPage() {
                 </p>
               </div>
             </div>
-            
+
             <UserProfile />
           </div>
         </div>
@@ -236,8 +252,8 @@ export default function HistoryPage() {
           <div className="text-center py-12 bg-gray-800 rounded-lg border border-gray-700">
             <FileText className="h-12 w-12 text-gray-500 mx-auto mb-4" />
             <h3 className="text-xl font-medium text-white mb-2">
-              {searchQuery || filterLanguage !== 'all' 
-                ? 'No documents found' 
+              {searchQuery || filterLanguage !== 'all'
+                ? 'No documents found'
                 : 'No documents yet'}
             </h3>
             <p className="text-gray-400">
@@ -259,9 +275,8 @@ export default function HistoryPage() {
             {filteredDocuments.map((doc) => (
               <div
                 key={doc.id}
-                className={`bg-gray-800 rounded-lg border border-gray-700 p-6 hover:border-blue-500 transition-all hover:shadow-lg group relative ${
-                  deletingDocId === doc.id ? 'opacity-50 pointer-events-none' : ''
-                }`}
+                className={`bg-gray-800 rounded-lg border border-gray-700 p-6 hover:border-blue-500 transition-all hover:shadow-lg group relative ${deletingDocId === doc.id ? 'opacity-50 pointer-events-none' : ''
+                  }`}
               >
                 {/* Deleting Overlay */}
                 {deletingDocId === doc.id && (
@@ -370,6 +385,34 @@ export default function HistoryPage() {
           </div>
         )}
       </main>
+
+      {/* Modals */}
+      <ConfirmDialog
+        isOpen={showConfirmDelete}
+        onClose={() => setShowConfirmDelete(false)}
+        onConfirm={confirmDelete}
+        title="Delete Document"
+        message={`Are you sure you want to permanently delete "${deleteDocData?.fileName}"?\n\nThis will remove:\n• Document analysis\n• All translations\n• Chat history\n\nThis action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
+
+      <AlertDialog
+        isOpen={showSuccessAlert}
+        onClose={() => setShowSuccessAlert(false)}
+        type="success"
+        title="Success"
+        message={alertMessage}
+      />
+
+      <AlertDialog
+        isOpen={showErrorAlert}
+        onClose={() => setShowErrorAlert(false)}
+        type="error"
+        title="Error"
+        message={alertMessage}
+      />
     </div>
   );
 }

@@ -1,15 +1,15 @@
 // components/KeyTermsExtracted.js
 
 import { useState } from 'react';
-import { DollarSign, AlertTriangle, Clock, FileText, ChevronDown, ChevronUp, Globe, Calendar, Heart, Bell } from 'lucide-react'; 
-import PlainLanguageRewriter from './PlainLanguageRewriter'; 
-import { formatTermDate, createGoogleCalendarUrl } from './ActionChecklist'; 
+import { DollarSign, AlertTriangle, Clock, FileText, ChevronDown, ChevronUp, Globe, Calendar, Heart, Bell } from 'lucide-react';
+import PlainLanguageRewriter from './PlainLanguageRewriter';
+import { formatTermDate, createGoogleCalendarUrl } from './ActionChecklist';
 
 // --- EXPORTED EXTRACTION FUNCTIONS (Used by Dashboard and this component) ---
 
 export const extractFinancialTerms = (fullText) => {
   const terms = [];
-  const textToSearch = fullText; 
+  const textToSearch = fullText;
 
   if (!textToSearch || textToSearch.length === 0) {
     return [];
@@ -28,15 +28,15 @@ export const extractFinancialTerms = (fullText) => {
 
   let allMatches = [];
   const seenPositions = new Set();
-  
+
   currencyPatterns.forEach(({ pattern, name }) => {
     const regex = new RegExp(pattern.source, 'g');
     let match;
-    
+
     while ((match = regex.exec(textToSearch)) !== null) {
       const index = match.index;
       const matchedText = match[0].trim();
-      
+
       let isOverlapping = false;
       for (let seenPos of seenPositions) {
         if (Math.abs(index - seenPos) < 5) {
@@ -44,14 +44,14 @@ export const extractFinancialTerms = (fullText) => {
           break;
         }
       }
-      
+
       if (isOverlapping) {
         continue;
       }
-      
+
       seenPositions.add(index);
-      allMatches.push({ 
-        amount: matchedText, 
+      allMatches.push({
+        amount: matchedText,
         index,
         patternName: name
       });
@@ -63,9 +63,9 @@ export const extractFinancialTerms = (fullText) => {
     const contextEnd = Math.min(textToSearch.length, index + amount.length + 80);
     const context = textToSearch.substring(contextStart, contextEnd).trim();
     const lowerContext = context.toLowerCase();
-    
+
     let type = 'Payment';
-    
+
     if (lowerContext.match(/security\s+deposit/i)) {
       type = 'Security Deposit';
     } else if (lowerContext.match(/monthly\s+rent|rent\s+for/i)) {
@@ -75,16 +75,16 @@ export const extractFinancialTerms = (fullText) => {
     } else if (lowerContext.match(/\bdeposit\b/i)) {
       type = 'Deposit';
     }
-    
+
     terms.push({
       amount,
       type,
       context: context.length > 120 ? '...' + context + '...' : context,
-      clauseType: 'general', 
+      clauseType: 'general',
       originalIndex: index
     });
   });
-  
+
   const seen = new Set();
   const uniqueTerms = terms.filter(term => {
     const normalizedAmount = term.amount.replace(/[₹$€£,\s()]/g, '');
@@ -102,7 +102,7 @@ export const extractFinancialTerms = (fullText) => {
 export const extractDateTerms = (fullText, language, translations) => {
   const terms = [];
   const textToSearch = fullText;
-  
+
   // Robust Multi-language date patterns
   const datePatterns = [
     /\d{1,2}\/\d{1,2}\/\d{2,4}/g,
@@ -114,12 +114,12 @@ export const extractDateTerms = (fullText, language, translations) => {
     /\b\d{1,2}\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+\d{4}\b/gi,
     /\b\d{4}-\d{2}-\d{2}\b/g,
     // FIX: Added more general month/year and day/month/year patterns for robustness
-    /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4}\b/gi, 
+    /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4}\b/gi,
     /\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4}\b/gi,
   ];
-  
+
   const t = translations[language] || translations.en;
-  
+
   datePatterns.forEach(pattern => {
     let match;
     while ((match = pattern.exec(textToSearch)) !== null) {
@@ -128,10 +128,10 @@ export const extractDateTerms = (fullText, language, translations) => {
       const contextStart = Math.max(0, index - 40);
       const contextEnd = Math.min(textToSearch.length, index + date.length + 40);
       const context = textToSearch.substring(contextStart, contextEnd).trim();
-      
+
       let typeKey = 'importantDateType';
       const lowerContext = context.toLowerCase();
-      
+
       if (lowerContext.match(/begin|start|início|comienzo|début|beginn|inizio|efectiva/i)) {
         typeKey = 'startDateType';
       } else if (lowerContext.match(/end|expir|término|fin|vencimiento|échéance|ablauf|scadenza/i)) {
@@ -141,14 +141,14 @@ export const extractDateTerms = (fullText, language, translations) => {
       } else if (lowerContext.match(/actualización|update|mise à jour|aktualisierung|aggiornamento|última actualización/i)) {
         typeKey = 'updateDateType';
       }
-      
+
       const type = t[typeKey] || typeKey;
-      
+
       terms.push({ date, type, context: '...' + context + '...', originalIndex: index });
     }
   });
-  
-  return terms.filter((term, index, self) => 
+
+  return terms.filter((term, index, self) =>
     index === self.findIndex(t => t.date === term.date)
   );
 };
@@ -161,7 +161,7 @@ export const extractNoticePeriods = (fullText, language) => {
     /(\d+)\s+(?:days?|días?|jours?|tage|giorni|dias?)\s+(?:written\s+)?(?:notice|aviso|préavis|kündigungsfrist|preavviso|prior|before|grace)/gi,
     /(?:notice|aviso|préavis|kündigungsfrist|preavviso)\s+(?:of|de)\s+(\d+)\s+(?:days?|días?|jours?|tage|giorni|dias?)/gi
   ];
-  
+
   noticePatterns.forEach(pattern => {
     let match;
     while ((match = pattern.exec(textToSearch)) !== null) {
@@ -171,7 +171,7 @@ export const extractNoticePeriods = (fullText, language) => {
       const contextEnd = Math.min(textToSearch.length, index + match[0].length + 50);
       const context = textToSearch.substring(contextStart, contextEnd).trim();
       const lowerContext = context.toLowerCase();
-      
+
       let type = 'Notice Period';
       if (lowerContext.match(/grace|gracia|délai de grâce|schonfrist/i)) {
         type = 'Grace Period';
@@ -180,7 +180,7 @@ export const extractNoticePeriods = (fullText, language) => {
       } else if (lowerContext.match(/late|retraso|retard|verspätung|mora/i)) {
         type = 'Late Payment Grace';
       }
-      
+
       terms.push({
         period: `${days} ${language === 'es' ? 'días' : language === 'fr' ? 'jours' : 'days'}`,
         type,
@@ -190,83 +190,83 @@ export const extractNoticePeriods = (fullText, language) => {
       });
     }
   });
-  
-  return terms.filter((term, index, self) => 
-      index === self.findIndex(t => t.originalIndex === term.originalIndex)
+
+  return terms.filter((term, index, self) =>
+    index === self.findIndex(t => t.originalIndex === term.originalIndex)
   );
 };
 
 export const extractPenalties = (fullText, language) => {
-    const terms = [];
-    const textToSearch = fullText;
-    const lowerText = textToSearch.toLowerCase();
-    
-    const penaltyKeywords = {
-      en: ['penalty', 'fine', 'breach', 'violation', 'forfeit', 'fee', 'late fee', 'eviction'],
-      es: ['penalización', 'multa', 'incumplimiento', 'violación', 'pérdida', 'tarifa', 'cargo', 'desalojo'],
-      fr: ['pénalité', 'amende', 'violation', 'manquement', 'perte', 'frais', 'expulsion'],
-      de: ['strafe', 'bußgeld', 'verletzung', 'verstoß', 'verlust', 'gebühr', 'räumung'],
-      hi: ['दंड', 'जुर्माना', 'उल्लंघन', 'हानि', 'शुल्क', 'बेदखली']
-    };
-    
-    const keywords = penaltyKeywords[language] || penaltyKeywords.en;
-    const seenContexts = new Set();
-    
-    keywords.forEach(keyword => {
-      let regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-      let match;
-      while ((match = regex.exec(lowerText)) !== null) {
-        const index = match.index;
-        const contextStart = Math.max(0, index - 60);
-        const contextEnd = Math.min(textToSearch.length, index + keyword.length + 100);
-        const context = textToSearch.substring(contextStart, contextEnd).trim();
-        const contextFingerprint = context.substring(0, 100).toLowerCase().trim();
-        
-        if (seenContexts.has(contextFingerprint)) {
-          continue;
-        }
-        seenContexts.add(contextFingerprint);
-        
-        const amountPatterns = [
-          /\$[\d,]+(?:\.\d{2})?/g,
-          /€[\d\s,]+(?:[.,]\d{2})?/g,
-          /£[\d,]+(?:\.\d{2})?/g,
-          /₹[\d,]+(?:\.\d{2})?/g
-        ];
-        
-        let amounts = [];
-        amountPatterns.forEach(pattern => {
-          const matches = context.match(pattern) || [];
-          amounts = amounts.concat(matches);
-        });
-        
-        let severity = 'medium';
-        const contextLower = context.toLowerCase();
-        if (contextLower.match(/immediately|inmediatamente|immédiatement|sofort|forfeit|pérdida|perte|evict|desalojo/i)) {
-          severity = 'high';
-        } else if (contextLower.match(/may|could|puede|pourrait|könnte/i)) {
-          severity = 'low';
-        }
+  const terms = [];
+  const textToSearch = fullText;
+  const lowerText = textToSearch.toLowerCase();
 
-        const riskScore = severity === 'high' ? 5 : (severity === 'medium' ? 3 : 1);
-        
-        terms.push({
-          type: keyword.charAt(0).toUpperCase() + keyword.slice(1),
-          severity,
-          amounts,
-          context: context.length > 120 ? '...' + context + '...' : context,
-          riskScore,
-          originalIndex: index
-        });
+  const penaltyKeywords = {
+    en: ['penalty', 'fine', 'breach', 'violation', 'forfeit', 'fee', 'late fee', 'eviction'],
+    es: ['penalización', 'multa', 'incumplimiento', 'violación', 'pérdida', 'tarifa', 'cargo', 'desalojo'],
+    fr: ['pénalité', 'amende', 'violation', 'manquement', 'perte', 'frais', 'expulsion'],
+    de: ['strafe', 'bußgeld', 'verletzung', 'verstoß', 'verlust', 'gebühr', 'räumung'],
+    hi: ['दंड', 'जुर्माना', 'उल्लंघन', 'हानि', 'शुल्क', 'बेदखली']
+  };
+
+  const keywords = penaltyKeywords[language] || penaltyKeywords.en;
+  const seenContexts = new Set();
+
+  keywords.forEach(keyword => {
+    let regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+    let match;
+    while ((match = regex.exec(lowerText)) !== null) {
+      const index = match.index;
+      const contextStart = Math.max(0, index - 60);
+      const contextEnd = Math.min(textToSearch.length, index + keyword.length + 100);
+      const context = textToSearch.substring(contextStart, contextEnd).trim();
+      const contextFingerprint = context.substring(0, 100).toLowerCase().trim();
+
+      if (seenContexts.has(contextFingerprint)) {
+        continue;
       }
-    });
-    
-    return terms;
+      seenContexts.add(contextFingerprint);
+
+      const amountPatterns = [
+        /\$[\d,]+(?:\.\d{2})?/g,
+        /€[\d\s,]+(?:[.,]\d{2})?/g,
+        /£[\d,]+(?:\.\d{2})?/g,
+        /₹[\d,]+(?:\.\d{2})?/g
+      ];
+
+      let amounts = [];
+      amountPatterns.forEach(pattern => {
+        const matches = context.match(pattern) || [];
+        amounts = amounts.concat(matches);
+      });
+
+      let severity = 'medium';
+      const contextLower = context.toLowerCase();
+      if (contextLower.match(/immediately|inmediatamente|immédiatement|sofort|forfeit|pérdida|perte|evict|desalojo/i)) {
+        severity = 'high';
+      } else if (contextLower.match(/may|could|puede|pourrait|könnte/i)) {
+        severity = 'low';
+      }
+
+      const riskScore = severity === 'high' ? 5 : (severity === 'medium' ? 3 : 1);
+
+      terms.push({
+        type: keyword.charAt(0).toUpperCase() + keyword.slice(1),
+        severity,
+        amounts,
+        context: context.length > 120 ? '...' + context + '...' : context,
+        riskScore,
+        originalIndex: index
+      });
+    }
+  });
+
+  return terms;
 };
 // --- END EXPORTED FUNCTIONS ---
 
 
-export default function KeyTermsExtracted({ documentData, language }) { 
+export default function KeyTermsExtracted({ documentData, language }) {
   const [expandedSections, setExpandedSections] = useState({
     financial: true,
     penalties: true,
@@ -282,16 +282,16 @@ export default function KeyTermsExtracted({ documentData, language }) {
       [section]: !prev[section]
     }));
   };
-  
+
   // Translation dictionaries (EXPANDED FOR MULTILINGUAL SUPPORT)
   const translations = {
     en: {
-      title: 'Key Terms (Financial, Notices, Penalties)', 
-      subtitle: 'Specific financial and risk values identified in your document', 
+      title: 'Key Terms (Financial, Notices, Penalties)',
+      subtitle: 'Specific financial and risk values identified in your document',
       translationNotice: 'Reference text excerpts below are shown in the original document language for accuracy.',
       referenceLabel: 'Reference (original language):',
       financialTerms: 'Financial Terms',
-      importantDates: 'Important Dates', 
+      importantDates: 'Important Dates',
       noticePeriods: 'Notice Periods & Deadlines',
       penalties: 'Penalties & Consequences',
       found: 'found',
@@ -308,11 +308,11 @@ export default function KeyTermsExtracted({ documentData, language }) {
       updateDateType: 'Update Date',
       setCalendarTitle: 'Set Calendar',
       setCalendarSubtitle: 'Use the "Add to Calendar" buttons for one-click reminder creation.',
-      rawLabel: 'Raw:', 
-      addToCalendar: 'Add to Calendar', 
-      dateFormatError: 'Date format not recognized' 
+      rawLabel: 'Raw:',
+      addToCalendar: 'Add to Calendar',
+      dateFormatError: 'Date format not recognized'
     },
-    de: { 
+    de: {
       title: 'Schlüsselbegriffe (Finanzen, Fristen, Strafen)',
       subtitle: 'Spezifische finanzielle und Risikowerte in Ihrem Dokument',
       translationNotice: 'Referenztextauszüge werden zur Genauigkeit in der Originalsprache des Dokuments angezeigt.',
@@ -335,11 +335,11 @@ export default function KeyTermsExtracted({ documentData, language }) {
       updateDateType: 'Aktualisierungsdatum',
       setCalendarTitle: 'Kalender setzen',
       setCalendarSubtitle: 'Verwenden Sie die Schaltflächen "Zum Kalender hinzufügen" für Erinnerungen.',
-      rawLabel: 'Rohdaten:', 
-      addToCalendar: 'Zum Kalender hinzufügen', 
-      dateFormatError: 'Datumsformat nicht erkannt' 
+      rawLabel: 'Rohdaten:',
+      addToCalendar: 'Zum Kalender hinzufügen',
+      dateFormatError: 'Datumsformat nicht erkannt'
     },
-    es: { 
+    es: {
       title: 'Términos Clave (Financieros, Avisos, Penalizaciones)',
       subtitle: 'Valores financieros y de riesgo específicos identificados en su documento',
       translationNotice: 'Los extractos de texto de referencia se muestran en el idioma original del documento para mayor precisión.',
@@ -362,9 +362,9 @@ export default function KeyTermsExtracted({ documentData, language }) {
       updateDateType: 'Fecha de Actualización',
       setCalendarTitle: 'Establecer Calendario',
       setCalendarSubtitle: 'Utilice los botones "Agregar al Calendario" para crear recordatorios.',
-      rawLabel: 'Crudo:', 
-      addToCalendar: 'Agregar al Calendario', 
-      dateFormatError: 'Formato de fecha no reconocido' 
+      rawLabel: 'Crudo:',
+      addToCalendar: 'Agregar al Calendario',
+      dateFormatError: 'Formato de fecha no reconocido'
     },
     hi: {
       title: 'मुख्य शर्तें (वित्तीय, नोटिस, दंड)',
@@ -389,9 +389,9 @@ export default function KeyTermsExtracted({ documentData, language }) {
       updateDateType: 'अद्यतन तिथि',
       setCalendarTitle: 'कैलेंडर सेट करें',
       setCalendarSubtitle: 'वन-क्लिक रिमाइंडर बनाने के लिए "कैलेंडर में जोड़ें" बटन का उपयोग करें।',
-      rawLabel: 'मूल डेटा:', 
-      addToCalendar: 'कैलेंडर में जोड़ें', 
-      dateFormatError: 'तिथि प्रारूप नहीं पहचाना गया' 
+      rawLabel: 'मूल डेटा:',
+      addToCalendar: 'कैलेंडर में जोड़ें',
+      dateFormatError: 'तिथि प्रारूप नहीं पहचाना गया'
     },
     bn: {
       title: 'মূল শর্তাবলী (আর্থিক, নোটিশ, জরিমানা)',
@@ -693,12 +693,12 @@ export default function KeyTermsExtracted({ documentData, language }) {
       )}
     </button>
   );
-  
+
   // NEW: Render function for the dates section (pulled from ActionChecklist logic)
   const renderDateSection = () => {
     // We must check if the date utility functions are available before rendering the dates section
     if (typeof formatTermDate === 'undefined' || typeof createGoogleCalendarUrl === 'undefined' || dateTerms.length === 0) {
-        return null;
+      return null;
     }
 
     return (
@@ -723,11 +723,11 @@ export default function KeyTermsExtracted({ documentData, language }) {
           <div className="space-y-3">
             {dateTerms.map((term, index) => {
               const calendarUrl = createGoogleCalendarUrl(
-                  term.date, 
-                  term.type, 
-                  documentData?.fileName || 'Document Date'
+                term.date,
+                term.type,
+                documentData?.fileName || 'Document Date'
               );
-              
+
               return (
                 <div key={index} className="bg-gray-800 p-3 rounded-lg border-l-4 border-blue-500 flex justify-between items-center space-x-3">
                   <div className="flex-1">
@@ -738,7 +738,7 @@ export default function KeyTermsExtracted({ documentData, language }) {
                     {/* FIXED: Added Raw label translation */}
                     <p className="text-xs text-gray-400 mt-1">{t.rawLabel} {term.date}</p>
                   </div>
-                  
+
                   {calendarUrl ? (
                     <a
                       href={calendarUrl}
@@ -775,7 +775,7 @@ export default function KeyTermsExtracted({ documentData, language }) {
         <p className="text-gray-300 mt-1">
           {t.subtitle}
         </p>
-        
+
         {isTranslated && (
           <div className="mt-3 flex items-center bg-blue-900/20 border border-blue-500/30 rounded-lg px-3 py-2">
             <Globe className="h-4 w-4 text-blue-400 mr-2 flex-shrink-0" />
@@ -795,7 +795,7 @@ export default function KeyTermsExtracted({ documentData, language }) {
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-400">{dateTermsCount}</div>
-            <div className="text-sm text-gray-300">{t.importantDates}</div> 
+            <div className="text-sm text-gray-300">{t.importantDates}</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-orange-400">{noticePeriods.length}</div>
@@ -812,14 +812,14 @@ export default function KeyTermsExtracted({ documentData, language }) {
         {/* FINANCIAL TERMS */}
         {financialTerms.length > 0 && (
           <div className="space-y-2">
-            <SectionHeader 
-              icon={DollarSign} 
+            <SectionHeader
+              icon={DollarSign}
               title={t.financialTerms}
               count={financialTerms.length}
               section="financial"
               color="text-green-400"
             />
-            
+
             {expandedSections.financial && (
               <div className="space-y-3 mt-2">
                 {financialTerms.map((term, index) => (
@@ -839,7 +839,7 @@ export default function KeyTermsExtracted({ documentData, language }) {
                           {t.referenceLabel}
                         </div>
                       )}
-                      <div dangerouslySetInnerHTML={{ 
+                      <div dangerouslySetInnerHTML={{
                         __html: term.context.replace(/\*\*(.*?)\*\*/g, '<strong class="text-yellow-300 font-semibold">$1</strong>')
                       }} />
                     </div>
@@ -853,30 +853,27 @@ export default function KeyTermsExtracted({ documentData, language }) {
         {/* NOTICE PERIODS */}
         {noticePeriods.length > 0 && (
           <div className="space-y-2">
-            <SectionHeader 
-              icon={Clock} 
+            <SectionHeader
+              icon={Clock}
               title={t.noticePeriods}
               count={noticePeriods.length}
               section="notices"
               color="text-orange-400"
             />
-            
+
             {expandedSections.notices && (
               <div className="space-y-3 mt-2">
                 {noticePeriods.map((term, index) => (
-                  <div key={index} className={`bg-gray-700 rounded-lg p-4 border-l-4 ${
-                    term.isGracePeriod ? 'border-green-500' : 'border-orange-500'
-                  }`}>
+                  <div key={index} className={`bg-gray-700 rounded-lg p-4 border-l-4 ${term.isGracePeriod ? 'border-green-500' : 'border-orange-500'
+                    }`}>
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <span className={`text-lg font-bold ${
-                          term.isGracePeriod ? 'text-green-400' : 'text-orange-400'
-                        }`}>{term.period}</span>
-                        <span className={`ml-3 text-sm px-2 py-1 rounded ${
-                          term.isGracePeriod 
-                            ? 'bg-green-900/30 text-green-300' 
+                        <span className={`text-lg font-bold ${term.isGracePeriod ? 'text-green-400' : 'text-orange-400'
+                          }`}>{term.period}</span>
+                        <span className={`ml-3 text-sm px-2 py-1 rounded ${term.isGracePeriod
+                            ? 'bg-green-900/30 text-green-300'
                             : 'bg-orange-900/30 text-orange-300'
-                        }`}>
+                          }`}>
                           {term.type}
                         </span>
                       </div>
@@ -888,7 +885,7 @@ export default function KeyTermsExtracted({ documentData, language }) {
                           {t.referenceLabel}
                         </div>
                       )}
-                      <div dangerouslySetInnerHTML={{ 
+                      <div dangerouslySetInnerHTML={{
                         __html: term.context.replace(/\*\*(.*?)\*\*/g, '<strong class="text-yellow-300 font-semibold">$1</strong>')
                       }} />
                     </div>
@@ -902,28 +899,26 @@ export default function KeyTermsExtracted({ documentData, language }) {
         {/* PENALTIES */}
         {penalties.length > 0 && (
           <div className="space-y-2">
-            <SectionHeader 
-              icon={AlertTriangle} 
+            <SectionHeader
+              icon={AlertTriangle}
               title={t.penalties}
               count={penalties.length}
               section="penalties"
               color="text-red-400"
             />
-            
+
             {expandedSections.penalties && (
               <div className="space-y-3 mt-2">
                 {penalties.map((term, index) => (
-                  <div key={index} className={`bg-gray-700 rounded-lg p-4 border-l-4 ${
-                    term.severity === 'high' ? 'border-red-500' : 
-                    term.severity === 'medium' ? 'border-orange-500' : 'border-yellow-500'
-                  }`}>
+                  <div key={index} className={`bg-gray-700 rounded-lg p-4 border-l-4 ${term.severity === 'high' ? 'border-red-500' :
+                      term.severity === 'medium' ? 'border-orange-500' : 'border-yellow-500'
+                    }`}>
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <span className={`text-sm font-semibold px-2 py-1 rounded ${
-                          term.severity === 'high' ? 'bg-red-900/30 text-red-300' :
-                          term.severity === 'medium' ? 'bg-orange-900/30 text-orange-300' :
-                          'bg-yellow-900/30 text-yellow-300'
-                        }`}>
+                        <span className={`text-sm font-semibold px-2 py-1 rounded ${term.severity === 'high' ? 'bg-red-900/30 text-red-300' :
+                            term.severity === 'medium' ? 'bg-orange-900/30 text-orange-300' :
+                              'bg-yellow-900/30 text-yellow-300'
+                          }`}>
                           {term.type}
                         </span>
                         {term.amounts.length > 0 && (
@@ -932,13 +927,12 @@ export default function KeyTermsExtracted({ documentData, language }) {
                           </span>
                         )}
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        term.severity === 'high' ? 'bg-red-600 text-red-100' :
-                        term.severity === 'medium' ? 'bg-orange-600 text-orange-100' :
-                        'bg-yellow-600 text-yellow-100'
-                      }`}>
-                        {term.severity === 'high' ? t.highRisk : 
-                         t.severity === 'medium' ? t.mediumRisk : t.lowRisk}
+                      <span className={`text-xs px-2 py-1 rounded ${term.severity === 'high' ? 'bg-red-600 text-red-100' :
+                          term.severity === 'medium' ? 'bg-orange-600 text-orange-100' :
+                            'bg-yellow-600 text-yellow-100'
+                        }`}>
+                        {term.severity === 'high' ? t.highRisk :
+                          t.severity === 'medium' ? t.mediumRisk : t.lowRisk}
                       </span>
                     </div>
                     <div className="text-sm text-gray-300 italic mt-2 bg-gray-800 p-2 rounded border-l-2 border-gray-600">
@@ -948,7 +942,7 @@ export default function KeyTermsExtracted({ documentData, language }) {
                           {t.referenceLabel}
                         </div>
                       )}
-                      <div dangerouslySetInnerHTML={{ 
+                      <div dangerouslySetInnerHTML={{
                         __html: term.context.replace(/\*\*(.*?)\*\*/g, '<strong class="text-yellow-300 font-semibold">$1</strong>')
                       }} />
                     </div>
@@ -958,7 +952,7 @@ export default function KeyTermsExtracted({ documentData, language }) {
             )}
           </div>
         )}
-        
+
         {/* IMPORTANT DATES (MOVED TO BOTTOM, STACKED FULL WIDTH) */}
         {renderDateSection()}
 
@@ -974,7 +968,7 @@ export default function KeyTermsExtracted({ documentData, language }) {
           </div>
         )}
       </div>
-      
+
       {/* Footer Line (at the very end of the component) */}
       <div className="border-t border-gray-700 p-4 text-center">
         <p className="text-sm text-gray-500 flex items-center justify-center space-x-1">

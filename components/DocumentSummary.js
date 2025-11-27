@@ -1,7 +1,7 @@
 // components/DocumentSummary.js
 
-import { FileText, Users, DollarSign, Calendar, AlertTriangle, ShieldCheck, Copy, Download, MessageSquare } from 'lucide-react';import ReactMarkdown from 'react-markdown';
-import { useState } from 'react'; 
+import { FileText, Users, DollarSign, Calendar, AlertTriangle, ShieldCheck, Copy, Download, MessageSquare } from 'lucide-react'; import ReactMarkdown from 'react-markdown';
+import { useState } from 'react';
 
 export default function DocumentSummary({ documentData, language = 'en' }) {
   const summary = documentData.summary || '';
@@ -109,19 +109,19 @@ export default function DocumentSummary({ documentData, language = 'en' }) {
 
   // The first element is the "Main Facts" or introductory content, which we ignore for display
   // const introSectionContent = sections.length > 0 ? sections[0].trim() : '';
-  
+
   // The remaining sections are the card content (starting with ## Parties Involved)
-  const cardSections = sections.slice(1); 
+  const cardSections = sections.slice(1);
 
   const summarySections = cardSections.map((section, index) => {
     const firstNewline = section.indexOf('\n');
     const title = firstNewline > 0 ? section.substring(0, firstNewline).trim() : section.substring(0, 50).trim();
     const content = firstNewline > 0 ? section.substring(firstNewline + 1).trim() : section.trim();
-    
+
     // Assign icons based on position, not keywords
     const icons = [Users, DollarSign, ShieldCheck, Calendar, AlertTriangle];
     const colors = ['indigo', 'green', 'blue', 'amber', 'red'];
-    
+
     return {
       title,
       content,
@@ -130,7 +130,7 @@ export default function DocumentSummary({ documentData, language = 'en' }) {
     };
   }).filter(s => s.content.length > 20);
 
-  
+
   const colorClasses = {
     indigo: {
       bg: 'bg-indigo-900/20',
@@ -161,7 +161,7 @@ export default function DocumentSummary({ documentData, language = 'en' }) {
 
   return (
 
-    
+
     <div className="space-y-6">
       <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 p-6">
         <div className="flex justify-between items-start">
@@ -176,14 +176,14 @@ export default function DocumentSummary({ documentData, language = 'en' }) {
           </div>
           {/* ADDED BUTTONS */}
           <div className="flex space-x-3 flex-shrink-0">
-            <button 
+            <button
               onClick={handleCopySummary}
               className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors text-white"
               title="Copy Summary"
             >
               <Copy className="h-5 w-5" />
             </button>
-            <button 
+            <button
               onClick={handleDownloadSummary}
               className="p-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors text-white"
               title="Download Summary"
@@ -193,7 +193,7 @@ export default function DocumentSummary({ documentData, language = 'en' }) {
           </div>
           {/* END ADDED BUTTONS */}
         </div>
-        
+
         {/* REMOVED rendering of introSectionContent here to skip 'Main Facts' display */}
       </div>
 
@@ -222,14 +222,14 @@ export default function DocumentSummary({ documentData, language = 'en' }) {
       )} */}
       {/* END ADDED FULL TEXT VIEW */}
 
-      
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {summarySections.length > 0 ? (
           summarySections.map((section, index) => {
             const Icon = section.icon;
             const styles = colorClasses[section.color] || colorClasses.blue;
-            
+
             return (
               <div key={index} className={`bg-gray-800 rounded-lg border p-6 transition-all hover:shadow-lg hover:-translate-y-1 ${styles.bg} ${styles.border}`}>
                 <div className="flex items-center space-x-3 mb-4">
